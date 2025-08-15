@@ -29,6 +29,23 @@
   (let ((group (mahogany-current-group *compositor-state*)))
     (group-maximize-current-frame group)))
 
+(defun remove-split (sequence seat)
+  "Remove the current frame from the frame tree"
+  (declare (ignore sequence seat))
+  (let* ((current-group (mahogany-current-group *compositor-state*))
+         (current-frame (mahogany-group-current-frame current-group))
+         (tree-root (mahogany/tree:find-root-frame current-frame))
+         (parent (mahogany/tree:frame-parent current-frame)))
+    (if (eql current-frame tree-root)
+        (log-string :info "Attempt to remove root frame ignored")
+        (flet ((hide-and-disable (view-frame)
+                 (let ((view (tree:frame-view view-frame)))
+                   (when view
+                     (%add-hidden (mahogany-group-hidden-views current-group)
+                                  view)))))
+          (tree:replace-frame parent current-frame #'hide-and-disable)
+          (run-hook-with-args tree:*remove-split-hook* current-frame)))))
+
 (defun close-current-view (sequence seat)
   (declare (ignore sequence seat))
   (let ((frame (mahogany-current-frame *compositor-state*)))
